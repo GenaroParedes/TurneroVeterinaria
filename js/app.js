@@ -1,16 +1,24 @@
 import {pacienteInput, propietarioInput, telefonoInput, emailInput, fechaAltaInput, sintomasTextarea, formulario} from './selectores.js';
-import { datosCita, submitCita } from "./funciones.js";
+import { datosCita, submitCita, crearDB } from "./funciones.js";
+
+window.onload = () => { //Cuando carga la pagina, es como el DOMContentLoaded
+    //Eventos
+    pacienteInput.addEventListener('change', datosCita);
+    propietarioInput.addEventListener('change', datosCita);
+    telefonoInput.addEventListener('change', datosCita);
+    emailInput.addEventListener('change', datosCita);
+    fechaAltaInput.addEventListener('change', datosCita);
+    sintomasTextarea.addEventListener('change', datosCita);
+
+    formulario.addEventListener('submit', submitCita);
+
+    crearDB();
+
+}
 
 
-//Eventos
-pacienteInput.addEventListener('change', datosCita);
-propietarioInput.addEventListener('change', datosCita);
-telefonoInput.addEventListener('change', datosCita);
-emailInput.addEventListener('change', datosCita);
-fechaAltaInput.addEventListener('change', datosCita);
-sintomasTextarea.addEventListener('change', datosCita);
 
-formulario.addEventListener('submit', submitCita);
+
 
 /* IMPORTANTEEE!!!!!!!!! Cuando creamos nuevos elementos en el DOM, no es tan facil como llamarlos y luego aplicarle eventos.
 Una vez que registramos una cita este boton ya lo podemos seleccionar, lo identificamos para cuando lo apretamos rellenar los campos automaticamente.

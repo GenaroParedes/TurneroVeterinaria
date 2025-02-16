@@ -1,6 +1,6 @@
 import { Notificacion } from "./classes/Notificacion.js";
 import { AdminCitas } from "./classes/AdminCitas.js";
-import { editando, citaObj } from './variables.js';
+import { editando, citaObj, dB } from './variables.js';
 import {pacienteInput, propietarioInput, telefonoInput, emailInput, fechaAltaInput, sintomasTextarea, formulario, formularioInput} from './selectores.js';
 
 
@@ -17,6 +17,7 @@ export function submitCita(e){
     
     //Con lo siguiente lo que hacemos es revisar todos los valores de todos los atributos del objeto citaObj,
     // si alguno esta vacío devuelve true
+    console.log(citaObj)
     if(Object.values(citaObj).some(valor => valor.trim() === '')){ 
         new Notificacion('Todos los campos son obligatorios', 'error').mostrarHTML();
         return;
@@ -34,13 +35,38 @@ export function submitCita(e){
         Esto asegura que nuevaCita sea una copia independiente de citaObj, y cualquier cambio posterior en citaObj no afectará a nuevaCita.
     */   
     if (editando.value){ //Para verificar si estamos editando o creando una nueva cita
-        citas.actualizar({...citaObj}); //Esto se encarga de crear un nuevo objeto citaObj para que los nuevos valores no pisen los anteriores
-        new Notificacion('Guardado correctamente', 'exito').mostrarHTML();
-        formularioInput.value = 'Registrar Paciente';
-        editando.value = false;
+         //Esto se encarga de crear un nuevo objeto citaObj para que los nuevos valores no pisen los anteriores
+        //Edita en IndexDB
+        const transaction = dB.value.transaction(['turnosVeterinaria'], 'readwrite');
+        const objectStore = transaction.objectStore('turnosVeterinaria');
+        console.log(citaObj)
+        objectStore.put(citaObj);
+        citas.actualizar({...citaObj}); //Como tenemos que actualizar los datos en el HTML, primero lo modificamos con put en la BD y luego actualizamos
+        transaction.oncomplete = () => {
+            new Notificacion('Guardado correctamente', 'exito').mostrarHTML();
+            formularioInput.value = 'Registrar Paciente';
+            editando.value = false;
+        }
+        
+        transaction.onerror = () => {
+            console.log('Hubo un error al editar el turno');
+        }
     } else {
+        //Insertar la cita en la BD indexedDB
+        const transaction = dB.value.transaction(['turnosVeterinaria'], 'readwrite');
+        //Habilitar el objectStore
+        const objectStore = transaction.objectStore('turnosVeterinaria');
+        //Insertar en la base de datos el objeto
+        objectStore.add(citaObj);
         citas.agregar({...citaObj}); //Esto se encarga de crear un nuevo objeto citaObj para que los nuevos valores no pisen los anteriores
-        new Notificacion('Paciente registrado', 'exito').mostrarHTML();
+        transaction.oncomplete = () => {
+            console.log('Se agregó correctamente');
+            new Notificacion('Paciente registrado', 'exito').mostrarHTML();
+        }
+
+        transaction.onerror = () => {
+            console.log('Hubo un error al crear el turno');
+        }
     }
 
     formulario.reset();
@@ -80,4 +106,43 @@ export function reiniciarObjetoCita(){
 
 export function generarId(){
     return Math.random().toString(36).substring(2) + Date.now();
+}
+
+export function crearDB(){
+    //crear la BD
+    const crearDB = window.indexedDB.open('turnosVeterinaria', 1);
+
+    //Si hay error
+    crearDB.onerror = function() {
+        console.log('Hubo un error al crear la BD');
+    }
+
+    //Si se crea con éxito
+    crearDB.onsuccess = function() {
+        console.log('Base de datos creada exitosamente');
+        dB.value = crearDB.result; //Instancia global de la base de datos - Accedo con dB.value porque trabajando con modulos 
+        // no puedo definir unicamente let dB, tengo que crear un objeto que contenga una propiedad y esa propiedad va a 
+        // tener la BD
+        citas.mostrar();
+
+    }
+
+    //Definir las columnas
+    crearDB.onupgradeneeded = function(e) {
+        const db = e.target.result; //Instancia de la base de datos
+        const objectStore = db.createObjectStore('turnosVeterinaria', {
+            keyPath: 'id', //indice con el cual hacemos la actualizacion, eliminacion, etc
+            autoIncrement: true
+        })
+
+        //Definir todas las columnas
+        objectStore.createIndex('paciente', 'paciente', {unique:false}); //paciente seria la mascota
+        objectStore.createIndex('propietario', 'propietario', {unique:false});
+        objectStore.createIndex('telefono', 'telefono', {unique:false});
+        objectStore.createIndex('email', 'email', {unique:true});
+        objectStore.createIndex('fecha', 'fecha', {unique:false});
+        objectStore.createIndex('sintomas', 'sintomas', {unique:false});
+        objectStore.createIndex('id', 'id', {unique:true});
+
+    }
 }

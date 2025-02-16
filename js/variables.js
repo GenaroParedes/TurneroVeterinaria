@@ -5,6 +5,7 @@ export const citaObj = {
     id: generarId(),
     paciente: '',
     propietario: '',
+    telefono: '',
     email: '',
     fecha: '',
     sintomas: ''
@@ -14,4 +15,8 @@ export const citaObj = {
 //La variable anterior para que se tome como global en modulos tenemos que utilizarla como un objeto
 export let editando = {
     value: false //Ahora debemos cambiarlo en donde estamos utilizando esta variable, y usarla como editando.value
+}
+
+export let dB = {
+    value: null
 }
